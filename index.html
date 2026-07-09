@@ -22,7 +22,7 @@
         }
 
         .form-container {
-            background: rgba(255, 255, 255, 0.95);
+            background: #ffffff;
             padding: 40px;
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
@@ -31,9 +31,8 @@
             text-align: center;
         }
 
-        /* Dashboard specific styling */
         .dashboard-layout {
-            max-width: 800px;
+            max-width: 600px;
             width: 100%;
             background: white;
             border-radius: 16px;
@@ -41,6 +40,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
         .user-bar {
@@ -89,6 +89,8 @@
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 15px;
+            background-color: #fff;
+            color: #333;
         }
 
         .input-group input:focus {
@@ -113,6 +115,11 @@
             font-weight: bold;
             cursor: pointer;
             margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .main-btn:hover {
+            background: #5a6fd6;
         }
 
         .divider {
@@ -125,7 +132,7 @@
             content: "";
             position: absolute;
             top: 50%;
-            width: 38%;
+            width: 35%;
             height: 1px;
             background: #ddd;
         }
@@ -147,11 +154,17 @@
             align-items: center;
             gap: 12px;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .google-btn:hover {
+            background: #f7f7f7;
         }
 
         .google-btn img {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
+            display: inline-block;
         }
 
         .profile-pic-group {
@@ -187,17 +200,19 @@
             cursor: pointer;
         }
 
-        /* Loading Spinner */
         #loading-screen {
             color: white;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
+            background: rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 12px;
         }
     </style>
 </head>
 <body>
 
-    <div id="loading-screen">Checking your account status...</div>
+    <div id="loading-screen">Syncing account workspace...</div>
 
     <div id="login-container" class="form-container" style="display: none;">
         <h2>Welcome Back</h2>
@@ -216,7 +231,7 @@
         <div class="divider">or</div>
 
         <button id="google-login-btn" class="google-btn">
-            <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/web-24dp/logo_googleg_color_24dp.png" alt="Google">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo">
             Sign in with Google
         </button>
     </div>
@@ -260,17 +275,17 @@
 
     <div id="dashboard-container" class="dashboard-layout" style="display: none;">
         <div class="user-bar">
-            <img id="dash-avatar" src="" alt="Avatar">
+            <img id="dash-avatar" src="https://via.placeholder.com/150" alt="Avatar">
             <div>
-                <h3 id="dash-display-name">Loading...</h3>
+                <h3 id="dash-display-name">Loading Profile...</h3>
                 <p id="dash-username" style="color: #667eea; font-weight: 600; font-size: 14px;"></p>
             </div>
-            <button id="logout-btn" style="margin-left: auto; background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Logout</button>
+            <button id="logout-btn" style="margin-left: auto; background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">Logout</button>
         </div>
         
         <div>
-            <h4>UniqueChatHub Chat Workspace Dashboard</h4>
-            <p style="color: #666; margin-top: 10px;">The database is connected! In the next update, we will add your theme customizer and your friend search bar right here.</p>
+            <h4 style="color:#333; margin-bottom: 8px;">UniqueChatHub Chat Workspace Dashboard</h4>
+            <p style="color: #666; font-size: 14px;">The database is connected! In the next update, we will add your theme customizer and your friend search bar right here.</p>
         </div>
     </div>
 
@@ -294,13 +309,11 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // Screen selectors
         const loadingScreen = document.getElementById('loading-screen');
         const loginContainer = document.getElementById('login-container');
         const profileSetupContainer = document.getElementById('profile-setup-container');
         const dashboardContainer = document.getElementById('dashboard-container');
         
-        // Buttons & inputs
         const googleLoginBtn = document.getElementById('google-login-btn');
         const profilePicInput = document.getElementById('profile-pic-input');
         const avatarPreview = document.getElementById('avatar-preview');
@@ -310,39 +323,40 @@
         let currentUser = null;
         let base64Image = "https://via.placeholder.com/150";
 
-        // 1. PERSISTENT LOGIN CHECKER (Keeps you logged in forever)
+        // Login State Evaluator
         onAuthStateChanged(auth, async (user) => {
-            loadingScreen.style.display = 'none';
             if (user) {
                 currentUser = user;
-                // Check if user already has a saved database document
-                const userDocRef = doc(db, "users", user.uid);
-                const userDocSnap = await getDoc(userDocRef);
+                try {
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDocSnap = await getDoc(userDocRef);
 
-                if (userDocSnap.exists()) {
-                    // Profile already exists! Skip directly to dashboard
-                    launchDashboard(userDocSnap.data());
-                } else {
-                    // New user! Bring up setup screen
+                    loadingScreen.style.display = 'none';
+                    if (userDocSnap.exists()) {
+                        launchDashboard(userDocSnap.data());
+                    } else {
+                        showProfileSetup(user);
+                    }
+                } catch(e) {
+                    loadingScreen.style.display = 'none';
                     showProfileSetup(user);
                 }
             } else {
-                // No user found, go back to login panel
+                loadingScreen.style.display = 'none';
                 loginContainer.style.display = 'block';
                 profileSetupContainer.style.display = 'none';
                 dashboardContainer.style.display = 'none';
             }
         });
 
-        // Trigger Google Auth Popup
         googleLoginBtn.addEventListener('click', () => {
-            signInWithPopup(auth, provider).catch(err => alert("Error: " + err.message));
+            signInWithPopup(auth, provider).catch(err => alert("Auth Window Error: " + err.message));
         });
 
-        // Show setup panel and populate defaults
         function showProfileSetup(user) {
             loginContainer.style.display = 'none';
             profileSetupContainer.style.display = 'block';
+            dashboardContainer.style.display = 'none';
             if (user.displayName) document.getElementById('setup-name').value = user.displayName;
             if (user.photoURL) {
                 avatarPreview.src = user.photoURL;
@@ -350,20 +364,18 @@
             }
         }
 
-        // Image local FileReader conversion logic
         profilePicInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     avatarPreview.src = event.target.result;
-                    base64Image = event.target.result; // Saves image data string directly
+                    base64Image = event.target.result;
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // 2. CHECK UNIQUE USERNAME AND SAVE PROFILE
         profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -372,37 +384,36 @@
             const birthday = document.getElementById('setup-birthday').value;
             const phone = document.getElementById('setup-phone').value;
 
-            // Simple validation check for custom characters
             if(rawUsername.length < 3) {
-                alert("Username must be at least 3 characters long.");
+                alert("Username must be 3+ characters long.");
                 return;
             }
 
-            // Query database collection to see if username is already claimed
-            const usernameQuery = query(collection(db, "users"), where("username", "==", rawUsername));
-            const querySnapshot = await getDocs(usernameQuery);
+            try {
+                const usernameQuery = query(collection(db, "users"), where("username", "==", rawUsername));
+                const querySnapshot = await getDocs(usernameQuery);
 
-            if (!querySnapshot.empty) {
-                alert("That username is already taken! Please pick another one.");
-                return;
+                if (!querySnapshot.empty) {
+                    alert("That username is taken! Choose another one.");
+                    return;
+                }
+
+                const profileData = {
+                    uid: currentUser.uid,
+                    username: rawUsername,
+                    fullName: fullName,
+                    birthday: birthday,
+                    phone: phone || "None",
+                    photoURL: base64Image
+                };
+
+                await setDoc(doc(db, "users", currentUser.uid), profileData);
+                launchDashboard(profileData);
+            } catch(error) {
+                alert("Database write error: " + error.message);
             }
-
-            // Build profile payload data object
-            const profileData = {
-                uid: currentUser.uid,
-                username: rawUsername,
-                fullName: fullName,
-                birthday: birthday,
-                phone: phone || "None",
-                photoURL: base64Image
-            };
-
-            // Write securely to Firestore database
-            await setDoc(doc(db, "users", currentUser.uid), profileData);
-            launchDashboard(profileData);
         });
 
-        // Open core app dashboard view
         function launchDashboard(data) {
             profileSetupContainer.style.display = 'none';
             loginContainer.style.display = 'none';
@@ -413,7 +424,6 @@
             document.getElementById('dash-username').innerText = "@" + data.username;
         }
 
-        // Handle Logout Action
         logoutBtn.addEventListener('click', () => {
             signOut(auth);
         });
